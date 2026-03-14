@@ -1,6 +1,4 @@
-# Spring AOP Example
-
-## What is AOP?
+## What is AOP
 
 **Aspect-Oriented Programming (AOP)** is a programming paradigm that helps improve modularity by separating cross-cutting concerns from business logic.
 
