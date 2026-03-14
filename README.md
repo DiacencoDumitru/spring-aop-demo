@@ -1,6 +1,29 @@
-> Что такое **AOP** — Википедия говорит это парадигма программирования основанная на идее разделения функциональности, для улучшения, разбиения программы на **Модули.**
+# Spring AOP Example
 
-> **AOP** — коротко своими словами это подход при котором сквозные операции такие как Логирование, Обработка исключений, проверка прав доступа (левая часть img) —> выносятся в отдельный класс** тем самым отделяясь от Бизнес Логики (правая часть img)
+## What is AOP?
 
-> ❌До применения AOP — строк кода **67**  
-> ✅После применения AOP — строк кода **41**
+**Aspect-Oriented Programming (AOP)** is a programming paradigm that helps improve modularity by separating cross-cutting concerns from business logic.
+
+Common cross-cutting concerns include:
+
+- Logging
+- Exception handling
+- Access control (security)
+
+Instead of duplicating this logic across many classes, AOP extracts it into separate components called **aspects**. This keeps the core business logic cleaner and easier to maintain.
+
+In this project:
+
+- **Cross-cutting concerns** (logging, security, exception handling) are handled by aspects.
+- **Business logic** remains focused only on application functionality.
+
+---
+
+## Code Impact
+
+Applying AOP simplified the codebase:
+
+- ❌ **Before AOP:** 67 lines of code  
+- ✅ **After AOP:** 41 lines of code
+
+This demonstrates how AOP reduces code duplication and improves maintainability.
