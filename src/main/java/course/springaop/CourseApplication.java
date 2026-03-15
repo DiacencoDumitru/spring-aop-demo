@@ -9,7 +9,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class CourseApplication implements CommandLineRunner {
 
-    // заинжектили для взаимодействия с БД
     private final BookRepository bookRepository;
 
     public CourseApplication(BookRepository bookRepository) {
@@ -20,13 +19,11 @@ public class CourseApplication implements CommandLineRunner {
         SpringApplication.run(CourseApplication.class, args);
     }
 
-    // инициализируем пару книг для БД
     @Override
     public void run(String... args) throws Exception {
-        Book book1 = new Book("Война и Мир", "Лев Николаевич Толстой");
-        Book book2 = new Book("Капитанская дочка", "Александр Сергеевич Пушкин");
+        Book book1 = new Book("War and Peace", "Leo Tolstoy");
+        Book book2 = new Book("The Captain's Daughter", "Alexander Pushkin");
 
-        // добавим эти книги в БД
         bookRepository.save(book1);
         bookRepository.save(book2);
     }
