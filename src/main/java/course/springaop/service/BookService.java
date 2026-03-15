@@ -23,19 +23,29 @@ public class BookService {
 
     public CustomResponse<Book> getAll() {
         List<Book> books = bookRepository.findAll();
-
-        return new CustomResponse<>(books, CustomStatus.SUCCESS);
+        log.info("Found {} books in repository", books.size());
+        return buildResponse(books, CustomStatus.SUCCESS);
     }
 
     public CustomResponse<Book> getBookByTitle(String title) {
-        Book book = bookRepository.findBookByTitle(title).orElseThrow();
-
-        return new CustomResponse<>(Stream.of(book).toList(), CustomStatus.SUCCESS);
+        return bookRepository.findBookByTitle(title)
+                .map(book -> {
+                    log.info("Book with title '{}' found", title);
+                    return buildResponse(Stream.of(book).toList(), CustomStatus.SUCCESS);
+                })
+                .orElseGet(() -> {
+                    log.warn("Book with title '{}' not found", title);
+                    return buildResponse(List.of(), CustomStatus.NOT_FOUND);
+                });
     }
 
     public CustomResponse<Book> addBook(Book book) {
         Book newBook = bookRepository.save(book);
+        log.info("New book persisted with title='{}', author='{}'", newBook.getTitle(), newBook.getAuthor());
+        return buildResponse(Stream.of(newBook).toList(), CustomStatus.SUCCESS);
+    }
 
-        return new CustomResponse<>(Stream.of(newBook).toList(), CustomStatus.SUCCESS);
+    private CustomResponse<Book> buildResponse(List<Book> books, CustomStatus status) {
+        return new CustomResponse<>(books, status);
     }
 }
