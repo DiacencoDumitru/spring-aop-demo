@@ -7,72 +7,91 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Order;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
 @Component
 @Aspect
 @Slf4j
+@Order(1)
 public class MyAspect {
 
-    // в качестве аргумента: ProceedingJoinPoint, если коротко то этот объект позволяет получить доступ к сигнатуре вызываемого метода и аргументом который будет с ним передано
     @Around("Pointcuts.allAddMethods()")
     public Object aroundAddingAdvice(ProceedingJoinPoint joinPoint) {
-        MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature(); // получим MethodSignature
-        Book book = null;
+        MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
+        String methodName = methodSignature.getName();
 
-        if (methodSignature.getName().equals("addBook")) { // если имя метода равна addBook
-            Object[] arguments = joinPoint.getArgs(); // то собери все аргументы которые передавались с этим методом
-            // далее мы эти аргументы переберём
-            for (Object arg : arguments) {
-                if (arg instanceof Book) { // если аргумент будет являтся аргументом класса Book, то Залогируй действия
-                    book = (Book) arg; // получим сам аргумент книгу
-                    log.info("Попытка добавить книгу с названием {}", book.getTitle()); // залогируем в консоль
-                }
+        Book book = null;
+        for (Object arg : joinPoint.getArgs()) {
+            if (arg instanceof Book) {
+                book = (Book) arg;
+                break;
             }
         }
 
-        Object result = null; // создадим объект result который будет принимать возвращенное значение из метода addBook()
+        if (book != null) {
+            log.info("Attempt to invoke '{}' for book with title='{}'", methodName, book.getTitle());
+        } else {
+            log.info("Attempt to invoke '{}' without Book argument", methodName);
+        }
+
+        long start = System.currentTimeMillis();
+        Object result;
         try {
             result = joinPoint.proceed();
         } catch (Throwable e) {
-            log.error(e.getMessage(), e);
-            result = new CustomResponse<>(null, CustomStatus.EXCEPTION);
+            log.error("Error during '{}' execution: {}", methodName, e.getMessage(), e);
+            return new CustomResponse<>(null, CustomStatus.EXCEPTION);
+        }
+        long duration = System.currentTimeMillis() - start;
+
+        if (book != null) {
+            log.info("Method '{}' for book with title='{}' successfully finished in {} ms", methodName, book.getTitle(), duration);
+        } else {
+            log.info("Method '{}' successfully finished in {} ms", methodName, duration);
         }
 
-        log.info("Книга с названием {} добавлена", book.getTitle());
         return result;
     }
 
     @Around("Pointcuts.allGetMethods()")
     public Object aroundGettingAdvice(ProceedingJoinPoint joinPoint) {
         MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
-        String title = null;
+        String methodName = methodSignature.getName();
 
-        if (methodSignature.getName().equals("getAll")) {
-            log.info("Попытка получить все книги");
-        } else if (methodSignature.getName().equals("getBookByTitle")) {
-            Object[] arguments = joinPoint.getArgs();
-            for (Object arg : arguments) {
-                if (arg instanceof String) {
-                    title = (String) arg;
-                    log.info("Пытаемся получить книгу с названием {}", title);
-                }
+        String title = null;
+        for (Object arg : joinPoint.getArgs()) {
+            if (arg instanceof String) {
+                title = (String) arg;
+                break;
             }
         }
 
-        Object result = null;
+        if ("getAll".equals(methodName)) {
+            log.info("Attempt to get all books");
+        } else if ("getBookByTitle".equals(methodName) && title != null) {
+            log.info("Attempt to get book by title='{}'", title);
+        } else {
+            log.info("Invoke get-method '{}'", methodName);
+        }
+
+        long start = System.currentTimeMillis();
+        Object result;
         try {
             result = joinPoint.proceed();
         } catch (Throwable e) {
-            log.error(e.getMessage(), e);
-            result = new CustomResponse<>(null, CustomStatus.EXCEPTION);
+            log.error("Error during '{}' execution: {}", methodName, e.getMessage(), e);
+            return new CustomResponse<>(null, CustomStatus.EXCEPTION);
         }
+        long duration = System.currentTimeMillis() - start;
 
-        if (methodSignature.getName().equals("getAll")) {
-            log.info("Все книги получены");
-        } else if (methodSignature.getName().equals("getBookByTitle")) {
-            log.info("Книга с названием {} получена", title);
+        if ("getAll".equals(methodName)) {
+            log.info("All books successfully fetched in {} ms", duration);
+        } else if ("getBookByTitle".equals(methodName) && title != null) {
+            log.info("Book with title='{}' successfully fetched in {} ms", title, duration);
+        } else {
+            log.info("Get-method '{}' successfully finished in {} ms", methodName, duration);
         }
 
         return result;
