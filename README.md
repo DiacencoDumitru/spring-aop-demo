@@ -1,171 +1,116 @@
-## Spring AOP Demo – Book Service
+# Spring AOP Demo - Production-Style AOP Showcase
 
-This repository contains a small Spring Boot application that demonstrates how to use **Spring AOP (Aspect Oriented Programming)** to implement cross‑cutting concerns such as logging and error handling around typical CRUD operations.
+A focused Spring Boot backend that demonstrates practical Aspect-Oriented Programming around a simple book catalog domain.
+The project highlights how to keep service logic clean while handling logging, exception mapping, and execution metrics through reusable aspects.
 
-The domain is intentionally simple – a small book catalog – so that the focus stays on how AOP is applied around service-layer methods.
+## Highlights
 
----
+- Spring AOP implementation with reusable pointcuts and multiple advice types
+- RESTful CRUD-style flow for books with a consistent `CustomResponse<T>` contract
+- Layered architecture (`controller` -> `service` -> `repository`) with cross-cutting concerns separated into `aop`
+- `@Around` advice for timing and safe exception wrapping in service operations
+- Additional logging aspect for `@Before`, `@AfterReturning`, and `@AfterThrowing` visibility
+- Integration-style HTTP test coverage via Spring Boot Test + MockMvc
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Client["Client"] --> Controller["BookController (/api/books)"]
+    Controller --> Service["BookService"]
+    Service --> Repository["BookRepository"]
+    Repository --> H2["H2 In-Memory DB"]
+
+    Service --> Response["CustomResponse + CustomStatus"]
+    Controller --> Response
+
+    AroundAspect["MyAspect (@Around)"] --> Service
+    LoggingAspect["LoggingAspect (@Before/@AfterReturning/@AfterThrowing)"] --> Service
+    LoggingAspect --> Controller
+```
+
+### How it works (high level)
+
+- Client requests enter through `BookController` under `/api`.
+- `BookService` handles business operations and returns typed `CustomResponse<Book>`.
+- `BookRepository` persists and reads entities from H2 in-memory storage.
+- `MyAspect` intercepts `get*` and `add*` service methods to time calls and convert unexpected failures.
+- `LoggingAspect` traces method calls, successful results, and propagated exceptions.
+
+## Engineering Challenges
+
+- Applying AOP without coupling business logic to logging/error infrastructure
+- Preserving a stable API response contract for both happy-path and exception cases
+- Keeping pointcuts explicit and maintainable as service methods evolve
+- Balancing observability detail with minimal runtime overhead
+
+## My Contribution
+
+- Designed the layered API flow for `Book` operations with centralized response modeling.
+- Implemented AOP pointcuts and advice orchestration for timing, argument/result logging, and exception tracing.
+- Added around-advice exception wrapping to keep service responses consistent.
+- Implemented startup data bootstrap to make local testing immediate.
+- Added integration-focused API verification with Spring Boot test context.
 
 ## Tech Stack
 
-- **Language**: Java 17  
-- **Framework**: Spring Boot 3 (Web, Data JPA, AOP)  
-- **Database**: H2 (in-memory)  
-- **Build Tool**: Maven  
-- **Testing**: JUnit 5, Spring Boot Test, MockMvc  
-- **Lombok** for boilerplate reduction
+- **Backend:** Java 17, Spring Boot 3, Spring Web, Spring Data JPA, Spring AOP
+- **Data:** H2 (in-memory)
+- **Build:** Maven
+- **Testing:** JUnit 5, Spring Boot Test, MockMvc
 
----
-
-## Architectural Overview
-
-The project follows a classic layered architecture:
-
-- **`controller` layer**  
-  - `BookController` exposes REST endpoints under `/api/books` for:
-    - Getting all books
-    - Getting a book by title
-    - Adding a new book
-  - All responses are wrapped into a `CustomResponse<T>` object.
-
-- **`service` layer**  
-  - `BookService` contains the business logic:
-    - Interacts with the repository
-    - Logs operations
-    - Produces `CustomResponse<Book>` with appropriate `CustomStatus` (`SUCCESS`, `NOT_FOUND`, `EXCEPTION`).
-
-- **`repository` layer**  
-  - `BookRepository` is a Spring Data JPA repository for the `Book` entity (H2 in-memory database).
-
-- **`entity` layer**  
-  - `Book` is a simple JPA entity with `id`, `title`, and `author`.
-
-- **`aop` layer**  
-  - `Pointcuts` defines reusable pointcuts for:
-    - All `get*` methods in `BookService`
-    - All `add*` methods in `BookService`
-  - `MyAspect` uses these pointcuts with `@Around` advice to:
-    - Log method invocations and arguments (book title, etc.)
-    - Measure execution time
-    - Wrap unexpected exceptions into a `CustomResponse` with status `EXCEPTION`.
-
-- **`util` layer**  
-  - `CustomResponse<T>` – generic wrapper for API responses (`code`, `message`, `responseList`).
-  - `CustomStatus` – enum with standard status codes and messages.
-
-On startup, `CourseApplication` populates the in-memory database with a couple of predefined books so the API is ready to use immediately.
-
----
-
-## REST API
-
-Base path: `/api`
-
-- **GET `/api/books`**  
-  - Returns all books wrapped in `CustomResponse<Book>`.
-
-- **GET `/api/books/{title}`**  
-  - Returns a single book (as a one-element list) wrapped in `CustomResponse<Book>`.  
-  - If a book with the given title does not exist, returns:
-    - `code = 1`
-    - `message = "Not found"`
-    - `responseList = []`
-
-- **POST `/api/books`**  
-  - Creates a new book.  
-  - Request body (JSON), for example:
-    ```json
-    {
-      "title": "War and Peace",
-      "author": "Leo Tolstoy"
-    }
-    ```
-  - Returns the created book in `CustomResponse<Book>` with `code = 0`, `message = "Success"`.
-
-All controller methods are intercepted by AOP advice for logging and error wrapping.
-
----
-
-## How to Run the Application
+## Quick Start
 
 ### Prerequisites
 
-- JDK 17 installed and `JAVA_HOME` configured  
-- Maven 3.x installed (`mvn` available in your PATH)
+- Java 17
+- Maven 3+
 
-### Build & Run
-
-From the project root:
+### Run application
 
 ```bash
-mvn clean package
+git clone https://github.com/DiacencoDumitru/spring-aop-demo.git
+cd spring-aop-demo
 mvn spring-boot:run
 ```
 
-The application will start on `http://localhost:8080`.
+Service starts on `http://localhost:8080`.
 
-Example requests (once the app is running):
-
-- Get all books:
+## How to Verify
 
 ```bash
-curl -X GET http://localhost:8080/api/books
-```
-
-- Get book by title:
-
-```bash
-curl -X GET http://localhost:8080/api/books/Война%20и%20Мир
-```
-
-- Add new book:
-
-```bash
-curl -X POST http://localhost:8080/api/books \
-  -H "Content-Type: application/json" \
-  -d "{\"title\":\"Clean Code\",\"author\":\"Robert C. Martin\"}"
-```
-
----
-
-## Running Integration Tests
-
-The project contains an integration test that boots the full Spring context and exercises the HTTP layer using MockMvc.
-
-Run all tests with:
-
-```bash
+# run integration-style tests
 mvn test
+
+# quick manual smoke checks
+curl -X GET http://localhost:8080/api/books
+curl -X GET http://localhost:8080/api/books/Clean%20Code
+curl -X POST http://localhost:8080/api/books -H "Content-Type: application/json" -d "{\"title\":\"Domain-Driven Design\",\"author\":\"Eric Evans\"}"
 ```
 
-The main integration test verifies that:
+## Key Endpoints
 
-- The application context starts correctly  
-- `GET /api/books` returns a `CustomResponse` JSON structure with:
-  - `code = 0`
-  - `message = "Success"`
-  - `responseList` as an array
+- `GET /api/books` - fetch all books
+- `GET /api/books/{title}` - fetch one book by title
+- `POST /api/books` - create a new book
 
----
+## Why This Project
 
-## AOP Focus
+This project is a compact interview-ready demonstration of practical Spring AOP usage:
 
-This repository is meant to serve as a compact but realistic example of Spring AOP usage in a REST application:
+- clear separation between core logic and cross-cutting concerns
+- measurable and observable service behavior
+- consistent error handling strategy across layers
 
-- Cross-cutting concerns (logging, error wrapping, timing) are implemented in the `aop` package.  
-- Business logic in `BookService` stays focused on working with entities and repositories.  
-- The response contract is centralized via `CustomResponse` and `CustomStatus`, which are reused across the controller and the aspect.
+## Project Structure
 
-There are two aspects to clearly demonstrate different AOP use cases:
+- `src/main/java/course/springaop/controller` - REST entry points
+- `src/main/java/course/springaop/service` - business logic
+- `src/main/java/course/springaop/repository` - JPA persistence
+- `src/main/java/course/springaop/aop` - aspects and pointcuts
+- `src/main/java/course/springaop/util` - response/status utilities
+- `src/test/java/course/springaop` - integration test entry
 
-- `MyAspect`  
-  - Uses `@Around` advice on `BookService` methods whose names start with `get*` and `add*`.  
-  - Measures execution time and converts unexpected exceptions into a `CustomResponse` with status `EXCEPTION`.  
-  - Shows how to work with `ProceedingJoinPoint`, arguments and method signatures.
+## Author
 
-- `LoggingAspect`  
-  - Uses `@Before` advice to log service-layer method invocations and arguments.  
-  - Uses `@AfterReturning` advice to log successful method results.  
-  - Uses `@AfterThrowing` advice on controller methods to log any unhandled exceptions.
-
-Together these aspects make the AOP behavior visible in the logs and illustrate the main advice types available in Spring AOP.
+Dumitru Diacenco, Java Backend Engineer
